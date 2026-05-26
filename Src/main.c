@@ -34,7 +34,8 @@ char USART1_ReadChar(void);
 void EC200U_SendCommand(char *cmd);
 
 void delay(volatile uint32_t time);
-
+void EC200U_SendSMS(char *number, char *message); //Msg sending function declaration
+void EC200U_MQTTPublish(char *topic, char*payload); //Mqtt sending function declaration
 /*=========================================================
                     GLOBAL VARIABLES
 =========================================================*/
@@ -167,8 +168,29 @@ int main(void)
     /* ENABLE GPS */
     EC200U_SendCommand("AT+QGPS=1\r\n");
 
-    //delay(30000000);
+    /*===MQTT Network Setup===*/
+    /*SET APN*/
+    EC200U_SendCommand("AT+QICSGP=1,1,\"internet\"\r\n");
+    Delay_ms(3000);
+
+    /*ACTIVATE PDP*/
+    EC200U_SendCommand("AT+QIACT=1\r\n");
+    Delay_ms(3000);
+
+    /* OPEN MQTT CONNECTION */
+
+    EC200U_SendCommand("AT+QMTOPEN=0,\"broker.hivemq.com\",1883\r\n");
+
+    Delay_ms(10000);
+
+    /* CONNECT MQTT CLIENT */
+
+    EC200U_SendCommand("AT+QMTCONN=0,\"vehicle_tracker\"\r\n");
+
     Delay_ms(5000);
+
+    //delay(30000000);
+   // Delay_ms(5000);
     while(1)
     {
         /* CHECK GPS STATUS */
@@ -179,7 +201,21 @@ int main(void)
         /* GET GPS LOCATION */
         EC200U_SendCommand("AT+QGPSLOC=0\r\n");
 
+        int i = 5;
+        sprintf(json_payload, "{\"value\":%d}", i);
+        EC200U_MQTTPublish("vehicle/data", json_payload);
+        //EC200U_MQTTPublish("vehicle/gps",json_payload);
+
+//        for(int i =0; i < 100; i++)
+//        {
+//         sprintf(json_payload, "{\"value\":%d}", i);
+//         EC200U_MQTTPublish("vehicle/data", json_payload);
+//        }
         //delay(30000000);
+        //Delay_ms(15000);
+        //Delay_ms(10000);
+        //EC200U_SendSMS("+918072818349", "₹25000 CREDITED TO YOUR CANARA BANK");
+        //Delay_ms(10000);
         Delay_ms(15000);
     }
 }
@@ -334,18 +370,75 @@ void EC200U_SendCommand(char *cmd)
         USART6_SendString("\r\n====================\r\n");
 
         /*===Json Payload===*/
-        sprintf(json_payload, "{\"latitude\":\"%d.%06d\",""\"longitude\":\"%d.%06d\"}",lat_deg, lat_frac, lon_deg, lon_frac);
-
+        //sprintf(json_payload, "{\"latitude\":\"%d.%06d\",""\"longitude\":\"%d.%06d\"}",lat_deg, lat_frac, lon_deg, lon_frac);
+        sprintf(json_payload, "{\"lat\":%d.%06d," "\"lon\":%d.%06d}", lat_deg, lat_frac, lon_deg, lon_frac);
         USART6_SendString("\r\n====================");
         USART6_SendString("\r\nJSON PAYLOAD");
         USART6_SendString("\r\n====================\r\n");
 
         USART6_SendString(json_payload);
-
+        /*==Send data to grafana===*/
+        EC200U_MQTTPublish("vehicle/gps",json_payload);
         USART6_SendString("\r\n====================\r\n");
     }
 }
 
+/*===MQTT PUBLISH Function===*/
+void EC200U_MQTTPublish(char *topic, char *payload)
+{
+	char cmd[100];
+
+	USART6_SendString("\r\n====================");
+	USART6_SendString("\r\nMQTT PUBLISH START");
+	USART6_SendString("\r\n====================\r\n");
+
+	/*===CREATE MQTT PUBLISH COMMAND===*/
+	sprintf(cmd,"AT+QMTPUBEX=0,0,0,0,\"%s\"\r\n",topic);
+	USART6_SendString("\r\nTX -> ");
+	USART6_SendString(cmd);
+	/*===SEND MQTT COMMAND===*/
+	USART1_SendString(cmd);
+	Delay_ms(3000);
+	/*===send json payload===*/
+	USART6_SendString("\r\nTX -> ");
+	USART6_SendString(payload);
+
+	USART1_SendString(payload);
+	Delay_ms(1000);
+
+	/* SEND CTRL + Z*/
+
+	USART1_WriteChar(0x1A);
+
+	USART6_SendString("\r\nCTRL+Z SENT");
+	Delay_ms(5000);
+
+	USART6_SendString("\r\n====================");
+	USART6_SendString("\r\nMQTT PUBLISH END");
+	USART6_SendString("\r\n====================\r\n");
+
+}
+void EC200U_SendSMS(char *number, char *message)
+{
+	char cmd[50];
+	/* SET SMS TEXT MODE*/
+	EC200U_SendCommand("AT+CMGF=1\r\n");
+	Delay_ms(1000);
+	/*CREATE CMGS COMMAND*/
+	sprintf(cmd,"AT+CMGS=\"%s\"\r\n",number);
+	USART6_SendString("\r\nSMS COMMAND : ");
+	USART6_SendString(cmd);
+	/*SEND CMGS COMMAND*/
+	 USART1_SendString(cmd);
+	 Delay_ms(5000);
+	 /* SEND MESSAGE TEXT */
+	 USART1_SendString(message);
+	 Delay_ms(5000);
+	 /*SEND CTRL+Z*/
+	 USART1_WriteChar(0x1A);
+	 USART6_SendString("\r\nSMS SENT\r\n");
+	 Delay_ms(5000);
+}
 /*=========================================================
                     USART1 INIT
                     PA9  -> TX
@@ -396,7 +489,7 @@ void USART6_Init(void)
     GPIOC->AFR[0] |= (0x88 << 24);
 
     /* 9600 Baud @16MHz */
-    USART6->BRR = 0x008B;
+    USART6->BRR = 0x008B;//115200
 
     USART6->CR1 |= USART_CR1_TE;
     USART6->CR1 |= USART_CR1_RE;
