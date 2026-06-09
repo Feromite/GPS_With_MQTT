@@ -59,8 +59,8 @@ all: main-build
 main-build: UART_Testing_GPS.elf secondary-outputs
 
 # Tool invocations
-UART_Testing_GPS.elf UART_Testing_GPS.map: $(OBJS) $(USER_OBJS) D:\STM32_Work\UART_Testing_GPS\STM32F401RETX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-gcc -o "UART_Testing_GPS.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"D:\STM32_Work\UART_Testing_GPS\STM32F401RETX_FLASH.ld" --specs=nosys.specs -Wl,-Map="UART_Testing_GPS.map" -Wl,--gc-sections -static -u _printf_float --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+UART_Testing_GPS.elf UART_Testing_GPS.map: $(OBJS) $(USER_OBJS) D:\Work\STM32_Work\UART_Testing_GPS\STM32F401RETX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-gcc -o "UART_Testing_GPS.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"D:\Work\STM32_Work\UART_Testing_GPS\STM32F401RETX_FLASH.ld" --specs=nosys.specs -Wl,-Map="UART_Testing_GPS.map" -Wl,--gc-sections -static -u _printf_float --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 

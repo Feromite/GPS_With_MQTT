@@ -179,14 +179,15 @@ int main(void)
 
     /* OPEN MQTT CONNECTION */
 
-    EC200U_SendCommand("AT+QMTOPEN=0,\"broker.hivemq.com\",1883\r\n");
-
+    //EC200U_SendCommand("AT+QMTOPEN=0,\"broker.hivemq.com\",1883\r\n");  For hivemq broker
+    //EC200U_SendCommand("AT+QMTOPEN=0,\"demo.thingsboard.io\",1883\r\n");
+    EC200U_SendCommand("AT+QMTOPEN=0,\"mqtt.eu.thingsboard.cloud\",1883\r\n");
     Delay_ms(10000);
 
     /* CONNECT MQTT CLIENT */
 
-    EC200U_SendCommand("AT+QMTCONN=0,\"vehicle_tracker\"\r\n");
-
+    //EC200U_SendCommand("AT+QMTCONN=0,\"vehicle_tracker\"\r\n");
+    EC200U_SendCommand("AT+QMTCONN=0,\"STM32\",\"XRExgDpWk0qUHVxtdda2\"\r\n");
     Delay_ms(5000);
 
     //delay(30000000);
@@ -201,9 +202,16 @@ int main(void)
         /* GET GPS LOCATION */
         EC200U_SendCommand("AT+QGPSLOC=0\r\n");
 
-        int i = 5;
-        sprintf(json_payload, "{\"value\":%d}", i);
-        EC200U_MQTTPublish("vehicle/data", json_payload);
+
+        int i = 0;
+        for(i=0;i<10;i++)
+        {
+        	sprintf(json_payload, "{\"value\":%d}", i);
+        	EC200U_MQTTPublish("v1/devices/me/telemetry", json_payload);
+        	Delay_ms(1000);
+        }
+
+        //EC200U_MQTTPublish("vehicle/data", json_payload); //for grafana
         //EC200U_MQTTPublish("vehicle/gps",json_payload);
 
 //        for(int i =0; i < 100; i++)
@@ -371,14 +379,15 @@ void EC200U_SendCommand(char *cmd)
 
         /*===Json Payload===*/
         //sprintf(json_payload, "{\"latitude\":\"%d.%06d\",""\"longitude\":\"%d.%06d\"}",lat_deg, lat_frac, lon_deg, lon_frac);
-        sprintf(json_payload, "{\"lat\":%d.%06d," "\"lon\":%d.%06d}", lat_deg, lat_frac, lon_deg, lon_frac);
+        //sprintf(json_payload, "{\"lat\":%d.%06d," "\"lon\":%d.%06d}", lat_deg, lat_frac, lon_deg, lon_frac); grafana
+        sprintf(json_payload, "{\"latitude\":%d.%06d," "\"longitude\":%d.%06d}", lat_deg, lat_frac, lon_deg, lon_frac);
         USART6_SendString("\r\n====================");
         USART6_SendString("\r\nJSON PAYLOAD");
         USART6_SendString("\r\n====================\r\n");
 
         USART6_SendString(json_payload);
         /*==Send data to grafana===*/
-        EC200U_MQTTPublish("vehicle/gps",json_payload);
+        EC200U_MQTTPublish("v1/devices/me/telemetry",json_payload);
         USART6_SendString("\r\n====================\r\n");
     }
 }
